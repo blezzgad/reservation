@@ -72,6 +72,7 @@ no_implicit_optional = true
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers"
 asyncio_mode = "auto"
+markers = ["integration: requires the dedicated PostgreSQL reservation_test database"]
 testpaths = ["tests"]
 
 [tool.coverage.run]

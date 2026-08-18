@@ -4,7 +4,7 @@ RADON_MIN_MI = 65
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install lint lint-fix fmt format-check type test security cc mi hal raw check docker-up docker-down docker-logs
+.PHONY: help install lint lint-fix fmt format-check type test test-unit test-integration security cc mi hal raw check docker-up docker-down docker-logs
 
 help:
 	@echo "Доступные цели:"
@@ -15,6 +15,8 @@ help:
 	@echo " format-check - проверить форматирование Ruff"
 	@echo " type - mypy (проверка типов)"
 	@echo " test - pytest с coverage-отчетами"
+	@echo " test-unit - тесты без PostgreSQL"
+	@echo " test-integration - integration-тесты на reservation_test"
 	@echo " security - bandit (скан безопасности)"
 	@echo " cc - radon cc (цикломатическая сложность) + quality gate"
 	@echo " mi - radon mi (индекс поддерживаемости) + quality gate"
@@ -53,6 +55,12 @@ type:
 
 test:
 	uv run pytest --cov --cov-report=term-missing
+
+test-unit:
+	uv run pytest -m "not integration"
+
+test-integration:
+	uv run pytest -m integration
 
 # ===============================
 # Bandit: анализ безопасности

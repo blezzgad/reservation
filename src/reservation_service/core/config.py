@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    database_url: str = "postgresql+asyncpg://reservation:reservation@localhost:5432/reservation"
+    database_url: str = "postgresql+asyncpg://reservation:reservation@localhost:5433/reservation"
     app_env: str = "development"
     log_level: str = "INFO"
 
