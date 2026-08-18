@@ -1,0 +1,75 @@
+[project]
+name = "reservation"
+version = "0.1.0"
+description = "Asynchronous product reservation service"
+readme = "README.md"
+requires-python = ">=3.11.9"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.4",
+    "httpx>=0.28.1",
+    "mypy>=2.3.1",
+    "pre-commit>=4.6.2",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "radon>=6.0.1",
+    "ruff>=0.16.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reservation_service"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# Набор правил: базовые ошибки/предупреждения + сортировка импортов + апгрейды и упрощения
+select = ["E4", "E7", "E9", "F", "W", "I", "UP", "B", "SIM"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["reservation_service"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.format]
+quote-style = "double"     # "double" | "single"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests"]
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["reservation_service"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
