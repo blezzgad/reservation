@@ -14,7 +14,7 @@ help:
 	@echo " fmt - ruff format"
 	@echo " format-check - проверить форматирование Ruff"
 	@echo " type - mypy (проверка типов)"
-	@echo " test - pytest с coverage-отчетами"
+	@echo " test - все тесты, coverage gate и HTML-отчет"
 	@echo " test-unit - тесты без PostgreSQL"
 	@echo " test-integration - integration-тесты на reservation_test"
 	@echo " security - bandit (скан безопасности)"
@@ -54,7 +54,7 @@ type:
 	uv run mypy
 
 test:
-	uv run pytest --cov --cov-report=term-missing
+	uv run pytest --cov --cov-report=term-missing --cov-report=html
 
 test-unit:
 	uv run pytest -m "not integration"
