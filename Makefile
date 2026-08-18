@@ -66,7 +66,7 @@ security:
 cc:
 	uv run radon cc -s -a src
 	@# QUALITY GATE: проваливаем, если есть элементы со сложностью E/F
-	@if uv run radon cc -s src | grep -E ' [EF] '; then \
+	@if uv run radon cc -s src | grep -E -- ' - [EF] \('; then \
 		echo "❌ Radon CC: обнаружены функции со сложностью E/F"; \
 		exit 1; \
 	else \

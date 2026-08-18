@@ -4,7 +4,13 @@ version = "0.1.0"
 description = "Asynchronous product reservation service"
 readme = "README.md"
 requires-python = ">=3.11.9"
-dependencies = []
+dependencies = [
+    "alembic>=1.16.5",
+    "asyncpg>=0.30.0",
+    "fastapi>=0.116.1",
+    "pydantic-settings>=2.10.1",
+    "sqlalchemy[asyncio]>=2.0.43",
+]
 
 [dependency-groups]
 dev = [
