@@ -1,3 +1,3 @@
-from reservation_service.services.reservation import ReservationService
+from reservation_service.services.reservation import ReservationResult, ReservationService
 
-__all__ = ["ReservationService"]
+__all__ = ["ReservationResult", "ReservationService"]

@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,13 +14,19 @@ from reservation_service.repositories import ProductRepository, ReservationRepos
 from reservation_service.schemas import ReservationCreate
 
 
+@dataclass(frozen=True, slots=True)
+class ReservationResult:
+    reservation: Reservation
+    created: bool
+
+
 class ReservationService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._products = ProductRepository(session)
         self._reservations = ReservationRepository(session)
 
-    async def create_reservation(self, payload: ReservationCreate) -> Reservation:
+    async def create_reservation(self, payload: ReservationCreate) -> ReservationResult:
         """Reserve stock atomically and return an idempotent result."""
 
         # The context manager commits only after the complete operation succeeds.
@@ -43,7 +51,7 @@ class ReservationService:
                 raise ReservationNotFoundError(external_id)
             return reservation
 
-    async def _create_in_transaction(self, payload: ReservationCreate) -> Reservation:
+    async def _create_in_transaction(self, payload: ReservationCreate) -> ReservationResult:
         # Fast path for ordinary callback retries: no Product lock is needed.
         existing = await self._reservations.get_by_external_id(payload.external_id)
         if existing is not None:
@@ -78,13 +86,13 @@ class ReservationService:
             status=ReservationStatus.RESERVED,
         )
         await self._reservations.add(reservation)
-        return reservation
+        return ReservationResult(reservation=reservation, created=True)
 
     @staticmethod
     def _resolve_existing(
         existing: Reservation,
         payload: ReservationCreate,
-    ) -> Reservation:
+    ) -> ReservationResult:
         if existing.product_id == payload.product_id and existing.quantity == payload.quantity:
-            return existing
+            return ReservationResult(reservation=existing, created=False)
         raise ReservationConflictError(payload.external_id)

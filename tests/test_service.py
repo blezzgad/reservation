@@ -70,8 +70,10 @@ async def test_successful_reservation_decrements_stock(
     )
     add = mock_async_method(monkeypatch, service._reservations, "add")
 
-    reservation = await service.create_reservation(make_payload())
+    result = await service.create_reservation(make_payload())
+    reservation = result.reservation
 
+    assert result.created is True
     assert product.available_quantity == 2
     assert reservation.external_id == "reservation-123"
     assert reservation.status is ReservationStatus.RESERVED
@@ -97,9 +99,10 @@ async def test_identical_existing_reservation_is_returned(
         "get_by_id_for_update",
     )
 
-    reservation = await service.create_reservation(make_payload())
+    result = await service.create_reservation(make_payload())
 
-    assert reservation is existing
+    assert result.reservation is existing
+    assert result.created is False
     product_lookup.assert_not_awaited()
 
 
@@ -181,9 +184,10 @@ async def test_duplicate_committed_while_waiting_for_product_lock_is_returned(
     )
     add = mock_async_method(monkeypatch, service._reservations, "add")
 
-    reservation = await service.create_reservation(make_payload(quantity=3))
+    result = await service.create_reservation(make_payload(quantity=3))
 
-    assert reservation is existing
+    assert result.reservation is existing
+    assert result.created is False
     assert product.available_quantity == 2
     add.assert_not_awaited()
 
@@ -212,9 +216,10 @@ async def test_unique_race_returns_identical_winner(monkeypatch: pytest.MonkeyPa
         side_effect=integrity_error,
     )
 
-    reservation = await service.create_reservation(make_payload())
+    result = await service.create_reservation(make_payload())
 
-    assert reservation is existing
+    assert result.reservation is existing
+    assert result.created is False
     assert session.begin.call_count == 2
     exit_calls = session.begin.return_value.__aexit__.await_args_list
     assert exit_calls[0].args[0] is IntegrityError

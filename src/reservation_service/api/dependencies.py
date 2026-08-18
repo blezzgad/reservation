@@ -5,6 +5,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from reservation_service.db.session import async_session_factory
+from reservation_service.services import ReservationService
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -15,3 +16,13 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
+
+
+def get_reservation_service(session: SessionDependency) -> ReservationService:
+    return ReservationService(session)
+
+
+ReservationServiceDependency = Annotated[
+    ReservationService,
+    Depends(get_reservation_service),
+]
