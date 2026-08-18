@@ -4,7 +4,7 @@ RADON_MIN_MI = 65
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install lint lint-fix fmt format-check type test security cc mi hal raw check
+.PHONY: help install lint lint-fix fmt format-check type test security cc mi hal raw check docker-up docker-down docker-logs
 
 help:
 	@echo "Доступные цели:"
@@ -21,6 +21,9 @@ help:
 	@echo " hal - radon hal (метрика халстеда)"
 	@echo " raw - radon raw (SLOC, LLOC, комментарии, число функций/классов)"
 	@echo " check - локальный quality gate"
+	@echo " docker-up - собрать и запустить API с PostgreSQL"
+	@echo " docker-down - остановить Compose-сервисы"
+	@echo " docker-logs - показать логи Compose-сервисов"
 
 install:
 	uv sync --all-groups
@@ -96,3 +99,12 @@ raw:
 # ===============================
 # Локальный прогон без изменения файлов
 check: lint format-check type test security cc mi
+
+docker-up:
+	docker compose up --build --detach
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs --follow

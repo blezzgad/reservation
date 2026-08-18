@@ -32,6 +32,19 @@ async def test_product_lookup_uses_for_update() -> None:
     assert sql.endswith("FOR UPDATE")
 
 
+async def test_product_lookup_uses_sku() -> None:
+    product = Product(id=42, sku="sku-42", available_quantity=5)
+    result = Mock()
+    result.scalar_one_or_none.return_value = product
+    session = AsyncMock(spec=AsyncSession)
+    session.execute.return_value = result
+    repository = ProductRepository(cast(AsyncSession, session))
+
+    found = await repository.get_by_sku("sku-42")
+
+    assert found is product
+
+
 async def test_reservation_lookup_uses_external_id() -> None:
     reservation = Reservation(
         external_id="reservation-123",
@@ -76,3 +89,27 @@ async def test_add_flushes_without_commit() -> None:
     session.add.assert_called_once_with(reservation)
     session.flush.assert_awaited_once_with()
     session.commit.assert_not_awaited()
+
+
+async def test_product_add_and_delete_flush_without_commit() -> None:
+    product = Product(id=42, sku="sku-42", available_quantity=5)
+    session = AsyncMock(spec=AsyncSession)
+    repository = ProductRepository(cast(AsyncSession, session))
+
+    await repository.add(product)
+    await repository.delete(product)
+
+    session.add.assert_called_once_with(product)
+    session.delete.assert_awaited_once_with(product)
+    assert session.flush.await_count == 2
+    session.commit.assert_not_awaited()
+
+
+async def test_reservation_exists_for_product() -> None:
+    result = Mock()
+    result.scalar_one.return_value = True
+    session = AsyncMock(spec=AsyncSession)
+    session.execute.return_value = result
+    repository = ReservationRepository(cast(AsyncSession, session))
+
+    assert await repository.exists_for_product(42) is True

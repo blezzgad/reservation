@@ -8,6 +8,18 @@ class ProductNotFoundError(ReservationServiceError):
         super().__init__(f"Product with id {product_id} was not found")
 
 
+class ProductSkuConflictError(ReservationServiceError):
+    def __init__(self, sku: str) -> None:
+        self.sku = sku
+        super().__init__(f"Product with sku {sku!r} already exists")
+
+
+class ProductInUseError(ReservationServiceError):
+    def __init__(self, product_id: int) -> None:
+        self.product_id = product_id
+        super().__init__(f"Product with id {product_id} has reservations and cannot be deleted")
+
+
 class ReservationNotFoundError(ReservationServiceError):
     def __init__(self, external_id: str) -> None:
         self.external_id = external_id

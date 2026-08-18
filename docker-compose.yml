@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-reservation}
+      POSTGRES_USER: ${POSTGRES_USER:-reservation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reservation}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      RESERVATION_DATABASE_URL: >-
+        postgresql+asyncpg://${POSTGRES_USER:-reservation}:${POSTGRES_PASSWORD:-reservation}@postgres:5432/${POSTGRES_DB:-reservation}
+      RESERVATION_APP_ENV: ${RESERVATION_APP_ENV:-development}
+      RESERVATION_LOG_LEVEL: ${RESERVATION_LOG_LEVEL:-INFO}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
