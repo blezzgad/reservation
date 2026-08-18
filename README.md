@@ -42,7 +42,7 @@ cp .env.example .env
 Соберите и запустите API вместе с PostgreSQL:
 
 ```bash
-docker compose up --build --detach
+docker compose up --build
 docker compose ps
 ```
 
