@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from loguru import logger
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,7 +35,7 @@ class ReservationService:
         # rolls back both the stock update and reservation insert.
         try:
             async with self._session.begin():
-                return await self._create_in_transaction(payload)
+                result = await self._create_in_transaction(payload)
         except IntegrityError:
             # UNIQUE(external_id) is the final guard for concurrent callbacks
             # that locked different Product rows.
@@ -42,7 +43,13 @@ class ReservationService:
                 existing = await self._reservations.get_by_external_id(payload.external_id)
                 if existing is None:
                     raise
-                return self._resolve_existing(existing, payload)
+                result = self._resolve_existing(existing, payload)
+
+        # This point is reached only after the transaction context has committed.
+        # The recovery transaction used after a UNIQUE race is also complete here.
+        # Logging earlier could claim a reservation was created when commit failed.
+        self._log_result(result, payload)
+        return result
 
     async def get_reservation(self, external_id: str) -> Reservation:
         async with self._session.begin():
@@ -70,6 +77,12 @@ class ReservationService:
 
         # Validate before mutating the tracked ORM entity.
         if product.available_quantity < payload.quantity:
+            logger.bind(
+                product_id=product.id,
+                requested=payload.quantity,
+                available=product.available_quantity,
+                external_id=payload.external_id,
+            ).warning("insufficient stock")
             raise InsufficientStockError(
                 product_id=product.id,
                 requested=payload.quantity,
@@ -95,4 +108,25 @@ class ReservationService:
     ) -> ReservationResult:
         if existing.product_id == payload.product_id and existing.quantity == payload.quantity:
             return ReservationResult(reservation=existing, created=False)
+        # Conflicts are expected client events, so log parameters but no payload body.
+        logger.bind(
+            external_id=payload.external_id,
+            existing_product_id=existing.product_id,
+            requested_product_id=payload.product_id,
+            existing_quantity=existing.quantity,
+            requested_quantity=payload.quantity,
+        ).warning("conflicting callback")
         raise ReservationConflictError(payload.external_id)
+
+    @staticmethod
+    def _log_result(result: ReservationResult, payload: ReservationCreate) -> None:
+        # Bind only identifiers and quantities required for operational diagnosis.
+        event_logger = logger.bind(
+            external_id=payload.external_id,
+            product_id=payload.product_id,
+            quantity=payload.quantity,
+        )
+        if result.created:
+            event_logger.info("reservation created")
+        else:
+            event_logger.info("duplicate callback")

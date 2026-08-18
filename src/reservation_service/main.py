@@ -3,8 +3,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from reservation_service.api.middleware import request_logging_middleware
 from reservation_service.api.v1.reservations import router as reservations_router
+from reservation_service.core.config import get_settings
+from reservation_service.core.logging import configure_logging
 from reservation_service.db.session import dispose_engine
+
+configure_logging(get_settings().log_level)
 
 
 @asynccontextmanager
@@ -20,6 +25,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.middleware("http")(request_logging_middleware)
 app.include_router(reservations_router)
 
 

@@ -1,6 +1,8 @@
+from collections.abc import Iterator
 from typing import cast
 from unittest.mock import AsyncMock
 
+from loguru import logger
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,18 @@ from reservation_service.exceptions import (
 from reservation_service.models import Product, Reservation, ReservationStatus
 from reservation_service.schemas import ReservationCreate
 from reservation_service.services import ReservationService
+
+LogEvent = tuple[str, dict[str, object]]
+
+
+@pytest.fixture
+def log_events() -> Iterator[list[LogEvent]]:
+    events: list[LogEvent] = []
+    sink_id = logger.add(
+        lambda message: events.append((message.record["message"], dict(message.record["extra"])))
+    )
+    yield events
+    logger.remove(sink_id)
 
 
 def create_service() -> tuple[ReservationService, AsyncMock]:
@@ -53,6 +67,7 @@ def make_reservation(*, product_id: int = 42, quantity: int = 3) -> Reservation:
 
 async def test_successful_reservation_decrements_stock(
     monkeypatch: pytest.MonkeyPatch,
+    log_events: list[LogEvent],
 ) -> None:
     service, session = create_service()
     product = Product(id=42, sku="sku-42", available_quantity=5)
@@ -80,10 +95,12 @@ async def test_successful_reservation_decrements_stock(
     assert lookup.await_count == 2
     add.assert_awaited_once_with(reservation)
     session.begin.assert_called_once_with()
+    assert any(message == "reservation created" for message, _ in log_events)
 
 
 async def test_identical_existing_reservation_is_returned(
     monkeypatch: pytest.MonkeyPatch,
+    log_events: list[LogEvent],
 ) -> None:
     service, _ = create_service()
     existing = make_reservation()
@@ -104,10 +121,12 @@ async def test_identical_existing_reservation_is_returned(
     assert result.reservation is existing
     assert result.created is False
     product_lookup.assert_not_awaited()
+    assert any(message == "duplicate callback" for message, _ in log_events)
 
 
 async def test_conflicting_existing_reservation_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
+    log_events: list[LogEvent],
 ) -> None:
     service, _ = create_service()
     mock_async_method(
@@ -119,6 +138,8 @@ async def test_conflicting_existing_reservation_is_rejected(
 
     with pytest.raises(ReservationConflictError):
         await service.create_reservation(make_payload(quantity=3))
+
+    assert any(message == "conflicting callback" for message, _ in log_events)
 
 
 async def test_product_not_found_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -140,6 +161,7 @@ async def test_product_not_found_is_rejected(monkeypatch: pytest.MonkeyPatch) ->
 
 async def test_insufficient_stock_does_not_decrement_product(
     monkeypatch: pytest.MonkeyPatch,
+    log_events: list[LogEvent],
 ) -> None:
     service, _ = create_service()
     product = Product(id=42, sku="sku-42", available_quantity=2)
@@ -162,6 +184,7 @@ async def test_insufficient_stock_does_not_decrement_product(
 
     assert product.available_quantity == 2
     add.assert_not_awaited()
+    assert any(message == "insufficient stock" for message, _ in log_events)
 
 
 async def test_duplicate_committed_while_waiting_for_product_lock_is_returned(
